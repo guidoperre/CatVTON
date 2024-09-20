@@ -36,7 +36,7 @@ class InferenceDataset(Dataset):
 
 class VITONHDTestDataset(InferenceDataset):
     def load_data(self):
-        assert os.path.exists(pair_txt:=os.path.join(self.args.data_root_path, 'test_pairs_unpaired.txt')), f"File {pair_txt} does not exist."
+        assert os.path.exists(pair_txt:=os.path.join(self.args.data_root_path, 'test_pairs.txt')), f"File {pair_txt} does not exist."
         with open(pair_txt, 'r') as f:
             lines = f.readlines()
         self.args.data_root_path = os.path.join(self.args.data_root_path, "test")
@@ -61,7 +61,7 @@ class DressCodeTestDataset(InferenceDataset):
         data = []
         for sub_folder in ['upper_body', 'lower_body', 'dresses']:
             assert os.path.exists(os.path.join(self.args.data_root_path, sub_folder)), f"Folder {sub_folder} does not exist."
-            pair_txt = os.path.join(self.args.data_root_path, sub_folder, 'test_pairs_paired.txt' if self.args.eval_pair else 'test_pairs_unpaired.txt')
+            pair_txt = os.path.join(self.args.data_root_path, sub_folder, 'test_pairs.txt')
             assert os.path.exists(pair_txt), f"File {pair_txt} does not exist."
             with open(pair_txt, 'r') as f:
                 lines = f.readlines()
@@ -86,7 +86,7 @@ def parse_args():
     parser.add_argument(
         "--base_model_path",
         type=str,
-        default="booksforcharlie/stable-diffusion-inpainting",  # Change to a copy repo as runawayml delete original repo
+        default="stable-diffusion-v1-5-inpainting",  # Change to a copy repo as runawayml delete original repo
         help=(
             "The path to the base model to use for evaluation. This can be a local path or a model identifier from the Model Hub."
         ),

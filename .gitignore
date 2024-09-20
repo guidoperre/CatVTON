@@ -10,7 +10,8 @@ Datasets
 densepose_
 .vscode
 playground.py
-output
+output/
+input/
 .idea/
 viton-hd/
 inpainting/

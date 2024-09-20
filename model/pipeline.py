@@ -8,16 +8,14 @@ import torch
 import tqdm
 from accelerate import load_checkpoint_in_model
 from diffusers import AutoencoderKL, DDIMScheduler, UNet2DConditionModel
-from diffusers.pipelines.stable_diffusion.safety_checker import \
-    StableDiffusionSafetyChecker
+from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 from diffusers.utils.torch_utils import randn_tensor
 from huggingface_hub import snapshot_download
 from transformers import CLIPImageProcessor
 
 from model.attn_processor import SkipAttnProcessor
 from model.utils import get_trainable_module, init_adapter
-from utils import (compute_vae_encodings, numpy_to_pil, prepare_image,
-                   prepare_mask_image, resize_and_crop, resize_and_padding)
+from utils import (compute_vae_encodings, numpy_to_pil, prepare_image, prepare_mask_image, resize_and_crop, resize_and_padding)
 
 
 class CatVTONPipeline:
@@ -29,18 +27,14 @@ class CatVTONPipeline:
         weight_dtype=torch.float32,
         device='cuda',
         compile=False,
-        skip_safety_check=False,
         use_tf32=True,
     ):
         self.device = device
         self.weight_dtype = weight_dtype
-        self.skip_safety_check = skip_safety_check
 
         self.noise_scheduler = DDIMScheduler.from_pretrained(base_ckpt, subfolder="scheduler")
         self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse").to(device, dtype=weight_dtype)
-        if not skip_safety_check:
-            self.feature_extractor = CLIPImageProcessor.from_pretrained(base_ckpt, subfolder="feature_extractor")
-            self.safety_checker = StableDiffusionSafetyChecker.from_pretrained(base_ckpt, subfolder="safety_checker").to(device, dtype=weight_dtype)
+
         self.unet = UNet2DConditionModel.from_pretrained(base_ckpt, subfolder="unet").to(device, dtype=weight_dtype)
         init_adapter(self.unet, cross_attn_cls=SkipAttnProcessor)  # Skip Cross-Attention
         self.attn_modules = get_trainable_module(self.unet, "attention")
@@ -67,16 +61,6 @@ class CatVTONPipeline:
             repo_path = snapshot_download(repo_id=attn_ckpt)
             print(f"Downloaded {attn_ckpt} to {repo_path}")
             load_checkpoint_in_model(self.attn_modules, os.path.join(repo_path, sub_folder, 'attention'))
-            
-    def run_safety_checker(self, image):
-        if self.safety_checker is None:
-            has_nsfw_concept = None
-        else:
-            safety_checker_input = self.feature_extractor(image, return_tensors="pt").to(self.device)
-            image, has_nsfw_concept = self.safety_checker(
-                images=image, clip_input=safety_checker_input.pixel_values.to(self.weight_dtype)
-            )
-        return image, has_nsfw_concept
     
     def check_inputs(self, image, condition_image, mask, width, height):
         if isinstance(image, torch.Tensor) and isinstance(condition_image, torch.Tensor) and isinstance(mask, torch.Tensor):
@@ -114,7 +98,7 @@ class CatVTONPipeline:
         image: Union[PIL.Image.Image, torch.Tensor],
         condition_image: Union[PIL.Image.Image, torch.Tensor],
         mask: Union[PIL.Image.Image, torch.Tensor],
-        num_inference_steps: int = 50,
+        num_inference_steps: int = 20,
         guidance_scale: float = 2.5,
         height: int = 1024,
         width: int = 768,
@@ -201,15 +185,5 @@ class CatVTONPipeline:
         # we always cast to float32 as this does not cause significant overhead and is compatible with bfloat16
         image = image.cpu().permute(0, 2, 3, 1).float().numpy()
         image = numpy_to_pil(image)
-        
-        # Safety Check
-        if not self.skip_safety_check:
-            current_script_directory = os.path.dirname(os.path.realpath(__file__))
-            nsfw_image = os.path.join(os.path.dirname(current_script_directory), 'resource', 'img', 'NSFW.jpg')
-            nsfw_image = PIL.Image.open(nsfw_image).resize(image[0].size)
-            image_np = np.array(image)
-            _, has_nsfw_concept = self.run_safety_checker(image=image_np)
-            for i, not_safe in enumerate(has_nsfw_concept):
-                if not_safe:
-                    image[i] = nsfw_image
+
         return image

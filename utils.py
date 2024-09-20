@@ -12,6 +12,28 @@ from typing import List, Optional, Tuple, Set
 from diffusers import UNet2DConditionModel, SchedulerMixin
 from tqdm import tqdm
 
+def resize_and_padding_image(image:Image, size:tuple, background_color:str="#FFFFFF") -> tuple:
+    # Padding to size ratio
+    w, h = image.size
+    target_w, target_h = size
+    if w / h < target_w / target_h: # target更宽，补左右
+        new_h = target_h
+        new_w = w * target_h // h
+    else:
+        new_w = target_w
+        new_h = h * target_w // w
+    image = image.resize((new_w, new_h), Image.LANCZOS)
+    # padding
+    padding = Image.new("RGB", size, color=background_color)
+    paste_coordinate = ((target_w - new_w) // 2, (target_h - new_h) // 2)
+    padding.paste(image, paste_coordinate)
+    return padding, (paste_coordinate[0], paste_coordinate[1], paste_coordinate[0] + new_w, paste_coordinate[1] + new_h)
+
+def restore_padding_image(image:Image, orig_size:tuple, bbox:tuple) -> Image:
+    w, h = image.size
+    orig_w, orig_h = orig_size
+    ret_image = image.crop(bbox)
+    return ret_image.resize((orig_w, orig_h), Image.LANCZOS)
 
 # Compute DREAM and update latents for diffusion sampling
 def compute_dream_and_update_latents_for_inpaint(

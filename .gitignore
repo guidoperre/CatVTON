@@ -13,6 +13,7 @@ playground.py
 output
 .idea/
 viton-hd/
-stable-diffusion-v1-5-inpainting/
+inpainting/
+checkpoint/
 /__pycache__/
 model/cloth_masker_segformer.py

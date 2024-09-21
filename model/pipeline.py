@@ -3,15 +3,12 @@ import os
 from typing import Union
 
 import PIL
-import numpy as np
 import torch
 import tqdm
 from accelerate import load_checkpoint_in_model
 from diffusers import AutoencoderKL, DDIMScheduler, UNet2DConditionModel
-from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 from diffusers.utils.torch_utils import randn_tensor
 from huggingface_hub import snapshot_download
-from transformers import CLIPImageProcessor
 
 from model.attn_processor import SkipAttnProcessor
 from model.utils import get_trainable_module, init_adapter

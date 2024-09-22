@@ -1,5 +1,7 @@
 import argparse
 import os
+import random
+import string
 
 import torch
 from PIL import Image
@@ -117,7 +119,8 @@ def main():
     )
 
     for i, result in enumerate(results):
-        output_path = os.path.join(args.output_dir, f'result_{i}.png')
+        id = ''.join(random.choices(string.ascii_letters, k=5))
+        output_path = os.path.join(args.output_dir, f'result_{id}.png')
         if not os.path.exists(os.path.dirname(output_path)):
             os.makedirs(os.path.dirname(output_path))
         result.save(output_path)
